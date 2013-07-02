@@ -15,8 +15,9 @@ class BarberShop:
 		print 'BarberShop initilized with {0} seats'.format(numberOfSeats)
 
 	def openShop(self):
-			thread = Thread(target = self.barberGoToWork)
-			thread.start()
+		print 'Barber shop is opening'
+		workingThread = Thread(target = self.barberGoToWork)
+		workingThread.start()
 
 	def barberGoToWork(self):
 		while True:
@@ -26,9 +27,9 @@ class BarberShop:
 				self.serviceNextCustomer()
 			else:
 				mutex.release()
+				print 'No customers, going to sleep.'
 				barber.sleep()
-			
-
+		
 	def enterBarberShop(self, customer):
 		print '>> {0} entered the shop and is looking for a seat'.format(customer.name)
 		self.seatSemaphore.acquire()
@@ -101,26 +102,14 @@ if __name__ == '__main__':
 	barber = Barber()
 
 	barberShop = BarberShop(barber, numberOfSeats=3)
-	barberShop.openShop()
-
+	barberWorkingThread = barberShop.openShop()
 
 	while len(customers) > 0:
-		#Arriving customers
-		#randomCustomerIndex = random.randrange(0, len(customers))
-		#c = customers[randomCustomerIndex]
-
 		c = customers.pop()	
-
 		#New customer enters the barbershop
 		barberShop.enterBarberShop(c)
-
-		customerInterval = 1 #random.randrange(1,6)
-
+		customerInterval = random.randrange(5,12+1)
 		time.sleep(customerInterval)
-
-	thread.join()
-
-	print '\nAll done!'
 
 		
 
