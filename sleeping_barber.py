@@ -1,18 +1,26 @@
-from threading import Thread, Lock, BoundedSemaphore, Event
+from threading import Thread, Lock, Event
 import time, random
 
 mutex = Lock()
+
+#Interval in seconds
+customerIntervalMin = 5
+customerIntervalMax = 15
+haircutDurationMin = 3
+haircutDurationMax = 15
 
 class BarberShop:
 	waitingCustomers = []
 
 	def __init__(self, barber, numberOfSeats):
 		self.barber = barber
-		
 		self.numberOfSeats = numberOfSeats
-		self.seatSemaphore = BoundedSemaphore(numberOfSeats)
-
 		print 'BarberShop initilized with {0} seats'.format(numberOfSeats)
+		print 'Customer min interval {0}'.format(customerIntervalMin)
+		print 'Customer max interval {0}'.format(customerIntervalMax)
+		print 'Haircut min duration {0}'.format(haircutDurationMin)
+		print 'Haircut max duration {0}'.format(customerIntervalMax)
+		print '---------------------------------------'
 
 	def openShop(self):
 		print 'Barber shop is opening'
@@ -22,38 +30,30 @@ class BarberShop:
 	def barberGoToWork(self):
 		while True:
 			mutex.acquire()
+
 			if len(self.waitingCustomers) > 0:
+				c = self.waitingCustomers[0]
+				del self.waitingCustomers[0]
 				mutex.release()
-				self.serviceNextCustomer()
+				self.barber.cutHair(c)
 			else:
 				mutex.release()
-				print 'No customers, going to sleep.'
+				print 'Aaah, all done, going to sleep'
 				barber.sleep()
-		
+				print 'Barber woke up'
+	
 	def enterBarberShop(self, customer):
+		mutex.acquire()
 		print '>> {0} entered the shop and is looking for a seat'.format(customer.name)
-		self.seatSemaphore.acquire()
-		#protect the list with a mutex
-		mutex.acquire()
-		self.waitingCustomers.append(c)	
-		print '{0} sat down in the waiting room'.format(customer.name)
-		mutex.release()
-		
-		#Wake up the barber if asleep
-		barber.wakeUp()
 
-	def serviceNextCustomer(self):
-		mutex.acquire()
-
-		if len(self.waitingCustomers) > 0:
-			self.seatSemaphore.release()
-			c = self.waitingCustomers.pop(0)
-				
-		mutex.release()
-
-		self.barber.cutHair(c)
-
-		print '{0} is done'.format(c.name)
+		if len(self.waitingCustomers) == self.numberOfSeats:
+			print 'Waiting room is full, {0} is leaving.'.format(customer.name)
+			mutex.release()
+		else:
+			print '{0} sat down in the waiting room'.format(customer.name)	
+			self.waitingCustomers.append(c)	
+			mutex.release()
+			barber.wakeUp()
 
 class Customer:
 	def __init__(self, name):
@@ -66,18 +66,18 @@ class Barber:
 		self.barberWorkingEvent.wait()
 
 	def wakeUp(self):
-		if not self.barberWorkingEvent.isSet():
-			self.barberWorkingEvent.set()
+		self.barberWorkingEvent.set()
 
 	def cutHair(self, customer):
-		#Set barber as busy
-		print '{0} is having a haircut'.format(customer.name)
+		#Set barber as busy 
 		self.barberWorkingEvent.clear()
 
-		#Is cutting hair
-		randomHairCuttingTime = random.randrange(3, 10+1)
+		print '{0} is having a haircut'.format(customer.name)
+
+		randomHairCuttingTime = random.randrange(haircutDurationMin, haircutDurationMax+1)
 		time.sleep(randomHairCuttingTime)
-		
+		print '{0} is done'.format(customer.name)
+
 
 if __name__ == '__main__':
 	customers = []
@@ -102,13 +102,13 @@ if __name__ == '__main__':
 	barber = Barber()
 
 	barberShop = BarberShop(barber, numberOfSeats=3)
-	barberWorkingThread = barberShop.openShop()
+	barberShop.openShop()
 
 	while len(customers) > 0:
 		c = customers.pop()	
 		#New customer enters the barbershop
 		barberShop.enterBarberShop(c)
-		customerInterval = random.randrange(5,12+1)
+		customerInterval = random.randrange(customerIntervalMin,customerIntervalMax+1)
 		time.sleep(customerInterval)
 
 		
